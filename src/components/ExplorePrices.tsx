@@ -9,17 +9,19 @@ import {
   ArrowDownRight,
   Building,
   Calendar,
-  Clock,
-  Maximize2,
+  RotateCcw,
 } from 'lucide-react';
 import { HDBTransaction } from '../types';
-import { AVAILABLE_TOWNS, AVAILABLE_FLAT_TYPES } from '../data/hdbData';
+import {
+  AVAILABLE_TOWNS,
+  AVAILABLE_FLAT_TYPES,
+  AVAILABLE_YEARS,
+} from '../data/hdbData';
 import {
   calculateMedian,
   formatSGD,
   formatCompactSGD,
   formatMonth,
-  getMonthlyTrends,
 } from '../utils/calculations';
 import { PriceTrendChart } from './PriceTrendChart';
 
@@ -40,18 +42,20 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
   onFlatTypeChange,
   onSelectTransaction,
 }) => {
-  const [sortBy, setSortBy] = useState<'date_desc' | 'price_desc' | 'price_asc' | 'area_desc'>(
-    'date_desc'
-  );
+  const [selectedYear, setSelectedYear] = useState<string>('ALL');
+  const [sortBy, setSortBy] = useState<
+    'date_desc' | 'date_asc' | 'price_desc' | 'price_asc' | 'area_desc'
+  >('date_desc');
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
       const matchTown = selectedTown === 'ALL' || tx.town === selectedTown;
       const matchType = selectedFlatType === 'ALL' || tx.flatType === selectedFlatType;
-      return matchTown && matchType;
+      const matchYear = selectedYear === 'ALL' || tx.transactionMonth.startsWith(selectedYear);
+      return matchTown && matchType && matchYear;
     });
-  }, [transactions, selectedTown, selectedFlatType]);
+  }, [transactions, selectedTown, selectedFlatType, selectedYear]);
 
   // Sort transactions
   const sortedTransactions = useMemo(() => {
@@ -59,6 +63,8 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
     switch (sortBy) {
       case 'date_desc':
         return list.sort((a, b) => b.transactionMonth.localeCompare(a.transactionMonth));
+      case 'date_asc':
+        return list.sort((a, b) => a.transactionMonth.localeCompare(b.transactionMonth));
       case 'price_desc':
         return list.sort((a, b) => b.resalePrice - a.resalePrice);
       case 'price_asc':
@@ -77,7 +83,7 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
   // Reset to first page whenever filters or sorting change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedTown, selectedFlatType, sortBy]);
+  }, [selectedTown, selectedFlatType, selectedYear, sortBy]);
 
   const totalPages = Math.ceil(sortedTransactions.length / PAGE_SIZE) || 1;
   const startIndex = (currentPage - 1) * PAGE_SIZE;
@@ -94,18 +100,17 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
   const lowestPrice = useMemo(() => (prices.length ? Math.min(...prices) : 0), [prices]);
   const transactionCount = filteredTransactions.length;
 
-  // Monthly trends for the chart
-  const trendPoints = useMemo(() => getMonthlyTrends(filteredTransactions), [filteredTransactions]);
+  const isFiltered = selectedTown !== 'ALL' || selectedFlatType !== 'ALL' || selectedYear !== 'ALL';
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-12">
       {/* Page Title & Intro */}
       <div className="border-b border-slate-200 pb-4">
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-          Explore HDB Resale Prices
+          Explore HDB Resale Prices (2017 – Present)
         </h2>
         <p className="text-sm sm:text-base text-slate-600 mt-1">
-          Filter by Singapore town and flat type to understand current resale valuations, historical price trends, and recent transaction records.
+          Every resale flat transaction recorded from January 2017 until present time. Filter by town, year, and flat type to analyze valuations, price movements, and comparable sales.
         </p>
       </div>
 
@@ -115,12 +120,30 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
         aria-label="Filter Controls"
         className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4"
       >
-        <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
-          <SlidersHorizontal className="w-4 h-4 text-slate-500" />
-          <span>Filter Transactions</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
+            <SlidersHorizontal className="w-4 h-4 text-slate-500" />
+            <span>Filter Transactions</span>
+          </div>
+
+          {isFiltered && (
+            <button
+              id="btn-reset-filters"
+              type="button"
+              onClick={() => {
+                onTownChange('ALL');
+                onFlatTypeChange('ALL');
+                setSelectedYear('ALL');
+              }}
+              className="text-xs font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Filters</span>
+            </button>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Town Filter */}
           <div>
             <label htmlFor="select-town" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -130,11 +153,31 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
               id="select-town"
               value={selectedTown}
               onChange={(e) => onTownChange(e.target.value)}
-              className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition-all cursor-pointer"
+              className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900 focus:bg-white transition-all cursor-pointer"
             >
               {AVAILABLE_TOWNS.map((t) => (
                 <option key={t} value={t}>
                   {t === 'ALL' ? 'All Towns across Singapore' : t}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Year Filter (from 2017 to Present) */}
+          <div>
+            <label htmlFor="select-year" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <span>Transaction Year</span>
+            </label>
+            <select
+              id="select-year"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900 focus:bg-white transition-all cursor-pointer"
+            >
+              {AVAILABLE_YEARS.map((y) => (
+                <option key={y} value={y}>
+                  {y === 'ALL' ? 'All Years (2017 – Present)' : y === '2026' ? '2026 (Present)' : y}
                 </option>
               ))}
             </select>
@@ -149,9 +192,10 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
               id="select-sort"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition-all cursor-pointer"
+              className="w-full h-11 px-3.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900 focus:bg-white transition-all cursor-pointer"
             >
               <option value="date_desc">Most Recent Month First</option>
+              <option value="date_asc">Oldest First (from 2017)</option>
               <option value="price_desc">Price: High to Low</option>
               <option value="price_asc">Price: Low to High</option>
               <option value="area_desc">Floor Area: Largest First</option>
@@ -194,7 +238,7 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
             Key Summary Information
           </h3>
           <span className="text-xs text-slate-500 font-medium">
-            Based on {transactionCount} recorded sales
+            Based on {transactionCount} recorded transactions ({selectedYear === 'ALL' ? '2017 – Present' : selectedYear})
           </span>
         </div>
 
@@ -229,7 +273,7 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
               {transactionCount}
             </div>
             <div className="text-[11px] sm:text-xs text-slate-500 mt-1">
-              Recent recorded resale transactions
+              Recorded resale transactions
             </div>
           </div>
 
@@ -269,10 +313,10 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
         </div>
       </section>
 
-      {/* Simple Price Trend Chart */}
+      {/* Price Trend Chart with Yearly default and timeframe options */}
       <section aria-label="Price Trend Chart">
         <PriceTrendChart
-          trendPoints={trendPoints}
+          transactions={filteredTransactions}
           town={selectedTown}
           flatType={selectedFlatType}
         />
@@ -283,7 +327,7 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
           <div>
             <h3 id="recent-transactions-heading" className="text-base sm:text-lg font-bold text-slate-900">
-              Recent Resale Transactions
+              Resale Flat Transactions (2017 – Present)
             </h3>
             <p className="text-xs text-slate-500">
               {sortedTransactions.length > PAGE_SIZE ? (
@@ -292,7 +336,7 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
                 </>
               ) : (
                 <>
-                  Showing <strong>{sortedTransactions.length}</strong> recorded flats.
+                  Showing <strong>{sortedTransactions.length}</strong> recorded flats from 2017 until present time.
                 </>
               )}{' '}
               Tap any transaction to inspect details & comparable sales.
@@ -302,6 +346,8 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
             Sorted by:{' '}
             {sortBy === 'date_desc'
               ? 'Most Recent'
+              : sortBy === 'date_asc'
+              ? 'Oldest First (2017+)'
               : sortBy === 'price_desc'
               ? 'Price (High to Low)'
               : sortBy === 'price_asc'
@@ -315,26 +361,28 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
             <Building className="w-8 h-8 mx-auto mb-2 text-slate-400" />
             <p className="font-semibold text-slate-800">No transactions match the selected filters</p>
             <p className="text-xs text-slate-500 mt-1">
-              Try switching Town to "All Towns" or Flat Type to "All Flat Types".
+              Try switching Town or Year to "All".
             </p>
             <button
+              type="button"
               onClick={() => {
                 onTownChange('ALL');
                 onFlatTypeChange('ALL');
+                setSelectedYear('ALL');
               }}
-              className="mt-4 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 cursor-pointer min-h-[44px]"
+              className="mt-4 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors"
             >
-              Reset Filters
+              Reset All Filters
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs divide-y divide-slate-100 overflow-hidden">
             {paginatedTransactions.map((tx) => (
               <div
                 key={tx.id}
                 id={`tx-row-${tx.id}`}
                 onClick={() => onSelectTransaction(tx)}
-                className="group bg-white rounded-2xl border border-slate-200 hover:border-slate-400 p-4 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer"
+                className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -344,111 +392,97 @@ export const ExplorePrices: React.FC<ExplorePricesProps> = ({
                   }
                 }}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  {/* Left block: Location & Flat Type */}
-                  <div className="space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-900 text-white">
-                        {tx.town}
-                      </span>
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
-                        {tx.flatType}
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        Storey {tx.storeyRange}
-                      </span>
-                    </div>
+                <div className="space-y-1 sm:max-w-md">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-900 text-white">
+                      {tx.town}
+                    </span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200">
+                      {tx.flatType}
+                    </span>
+                    <span className="text-xs text-slate-500 font-medium">
+                      Storey {tx.storeyRange}
+                    </span>
+                  </div>
 
-                    <div className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
-                      Blk {tx.block} {tx.streetName}
-                    </div>
+                  <div className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-amber-900 transition-colors">
+                    Blk {tx.block} {tx.streetName}
+                  </div>
 
-                    {/* Metadata chips */}
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <span className="inline-flex items-center gap-1">
-                        <Maximize2 className="w-3.5 h-3.5 text-slate-400" />
-                        <strong>{tx.floorArea} sqm</strong> ({Math.round(tx.floorArea * 10.764)} sqft)
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        Lease: {tx.remainingLease}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        Sold: {formatMonth(tx.transactionMonth)}
-                      </span>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                    <span>{tx.floorArea} sqm (~{Math.round(tx.floorArea * 10.764)} sqft)</span>
+                    <span>•</span>
+                    <span>Lease remaining: {tx.remainingLeaseYears} yrs</span>
+                    <span>•</span>
+                    <span className="font-semibold text-slate-700">{formatMonth(tx.transactionMonth)}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-4 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                  <div className="text-left sm:text-right">
+                    <div className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                      {formatSGD(tx.resalePrice)}
+                    </div>
+                    <div className="text-xs font-medium text-slate-500">
+                      {formatSGD(tx.pricePerSqm)} / sqm
                     </div>
                   </div>
 
-                  {/* Right block: Price & CTA */}
-                  <div className="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-2.5 sm:pt-0 border-slate-100 shrink-0">
-                    <div className="text-left sm:text-right">
-                      <div className="text-lg sm:text-xl lg:text-2xl font-black text-slate-900 tracking-tight">
-                        {formatSGD(tx.resalePrice)}
-                      </div>
-                      <div className="text-xs text-slate-500 font-medium">
-                        {formatSGD(tx.pricePerSqm)} / sqm
-                      </div>
-                    </div>
-
-                    <div className="inline-flex items-center gap-1 text-xs font-bold text-slate-900 group-hover:text-amber-600 sm:mt-2">
-                      <span>Inspect Flat</span>
-                      <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
+                  <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-amber-100 group-hover:text-amber-900 flex items-center justify-center text-slate-400 transition-colors shrink-0">
+                    <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+        )}
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div
-                id="pagination-controls"
-                className="mt-6 p-4 bg-white rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4"
+        {/* Pagination Controls */}
+        {sortedTransactions.length > PAGE_SIZE && (
+          <div
+            id="pagination-controls"
+            aria-label="Pagination Controls"
+            className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white rounded-2xl border border-slate-200 p-4 shadow-xs mt-4"
+          >
+            <div className="text-xs text-slate-600 font-medium text-center sm:text-left">
+              Showing page <strong className="text-slate-900">{currentPage}</strong> of <strong className="text-slate-900">{totalPages}</strong> (capped at 30 items per page)
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                id="btn-pagination-prev"
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className={`flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors min-h-[44px] cursor-pointer ${
+                  currentPage === 1
+                    ? 'border-slate-200 text-slate-300 bg-slate-50 cursor-not-allowed'
+                    : 'border-slate-300 text-slate-700 bg-white hover:bg-slate-100'
+                }`}
               >
-                <div className="text-xs text-slate-600 font-medium text-center sm:text-left">
-                  Page <strong className="text-slate-900">{currentPage}</strong> of <strong className="text-slate-900">{totalPages}</strong> (showing {startIndex + 1}–{endIndex} of {sortedTransactions.length} flats)
-                </div>
+                <ChevronLeft className="w-4 h-4" />
+                <span>Previous</span>
+              </button>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    id="prev-page-button"
-                    onClick={() => {
-                      setCurrentPage((prev) => Math.max(prev - 1, 1));
-                      document.getElementById('recent-transactions-section')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    disabled={currentPage <= 1}
-                    className={`inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold border transition-colors min-h-[44px] cursor-pointer ${
-                      currentPage <= 1
-                        ? 'border-slate-200 text-slate-300 bg-slate-50 cursor-not-allowed'
-                        : 'border-slate-300 text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900'
-                    }`}
-                    aria-label="Previous Page"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                    <span>Previous Page</span>
-                  </button>
+              <span className="text-xs font-bold text-slate-800 px-2">
+                {currentPage} / {totalPages}
+              </span>
 
-                  <button
-                    id="next-page-button"
-                    onClick={() => {
-                      setCurrentPage((prev) => Math.min(prev + 1, totalPages));
-                      document.getElementById('recent-transactions-section')?.scrollIntoView({ behavior: 'smooth' });
-                    }}
-                    disabled={currentPage >= totalPages}
-                    className={`inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold transition-colors min-h-[44px] cursor-pointer ${
-                      currentPage >= totalPages
-                        ? 'border border-slate-200 text-slate-300 bg-slate-50 cursor-not-allowed'
-                        : 'bg-slate-900 text-white hover:bg-slate-800 shadow-xs'
-                    }`}
-                    aria-label="Next Page"
-                  >
-                    <span>Next Page</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
+              <button
+                id="btn-pagination-next"
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className={`flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors min-h-[44px] cursor-pointer ${
+                  currentPage === totalPages
+                    ? 'border-slate-200 text-slate-300 bg-slate-50 cursor-not-allowed'
+                    : 'border-slate-300 text-slate-700 bg-white hover:bg-slate-100'
+                }`}
+              >
+                <span>Next</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </section>

@@ -32,14 +32,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-normal">
-                Compare HDB resale prices across towns, flat types & historical trends
+                Every resale flat transaction from 2017 until present time
               </p>
             </div>
           </div>
 
           <div className="text-xs text-slate-500 hidden md:flex items-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Live Dataset (2024 Q1 - Q3)</span>
+            <span className="font-medium text-slate-700">Resale Transactions (2017 – Present)</span>
           </div>
         </div>
 

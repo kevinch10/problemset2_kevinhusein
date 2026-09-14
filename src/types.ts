@@ -20,7 +20,8 @@ export interface HDBTransaction {
 export interface FilterState {
   town: string;
   flatType: string;
-  sortBy: 'date_desc' | 'price_desc' | 'price_asc' | 'area_desc';
+  year?: string;
+  sortBy: 'date_desc' | 'date_asc' | 'price_desc' | 'price_asc' | 'area_desc';
 }
 
 export interface TownSummary {
@@ -33,3 +34,5 @@ export interface TownSummary {
   lowestPrice: number;
   flatTypeBreakdown: Record<string, number>;
 }
+
+export type TrendTimeframe = '2017_2026' | 'past_year' | 'past_six_months' | 'designated_year';

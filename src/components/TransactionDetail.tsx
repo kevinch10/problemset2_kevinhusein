@@ -217,7 +217,7 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
             <div className="space-y-1">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Price Assessment vs {transaction.town} {transaction.flatType} Median
+                Price Assessment vs {transaction.town} {transaction.flatType} Median (2017 – Present)
               </span>
               <div className="flex items-center gap-2">
                 {evaluation.tag === 'Below Typical' && (
@@ -276,7 +276,7 @@ export const TransactionDetail: React.FC<TransactionDetailProps> = ({
               Similar Transactions in {transaction.town} ({transaction.flatType})
             </h3>
             <p className="text-xs text-slate-500">
-              Compare this unit against other recent resale records in the same location
+              Compare this unit against other recorded resale records in {transaction.town} from 2017 until present time
             </p>
           </div>
           <span className="text-xs text-slate-500">

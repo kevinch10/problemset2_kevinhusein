@@ -107,7 +107,7 @@ export const CompareTowns: React.FC<CompareTownsProps> = ({
           Compare Two HDB Towns Side by Side
         </h2>
         <p className="text-sm sm:text-base text-slate-600 mt-1">
-          Select two towns to directly compare median resale prices, cost per square metre, transaction volume, and recent price changes.
+          Select two towns to directly compare median resale prices, cost per square metre, transaction volume, and price growth from 2017 until present time.
         </p>
       </div>
 
@@ -313,10 +313,10 @@ export const CompareTowns: React.FC<CompareTownsProps> = ({
                       </div>
                     </div>
 
-                    {/* 4. Recent Price Change */}
+                    {/* 4. Price Change Since 2017 */}
                     <div className="pt-3 border-t border-slate-100">
                       <div className="text-xs text-slate-500 font-medium mb-1">
-                        Recent Price Movement
+                        Price Growth Since 2017
                       </div>
                       <div className="flex items-center gap-2">
                         {town.priceChangePercent > 1 ? (
@@ -335,7 +335,7 @@ export const CompareTowns: React.FC<CompareTownsProps> = ({
                             {town.priceChangePercent >= 0 ? '+' : ''}{town.priceChangePercent}% (Stable)
                           </span>
                         )}
-                        <span className="text-xs text-slate-500">vs early 2024</span>
+                        <span className="text-xs text-slate-500">vs 2017 baseline</span>
                       </div>
                     </div>
                   </div>

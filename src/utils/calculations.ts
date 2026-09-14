@@ -57,6 +57,175 @@ export interface MonthlyTrendPoint {
   count: number;
 }
 
+export interface TrendPoint {
+  key: string; // e.g. "2017" or "2024-05"
+  label: string; // e.g. "Year 2017" or "May 2024"
+  shortLabel: string; // e.g. "2017" or "May '24"
+  periodType: 'year' | 'month';
+  medianPrice: number;
+  avgPrice: number;
+  count: number;
+}
+
+/**
+ * Generates sorted yearly trend points (default view).
+ * Aggregates all transactions into annual median prices.
+ */
+export function getYearlyTrends(transactions: HDBTransaction[]): TrendPoint[] {
+  if (transactions.length === 0) return [];
+  const grouped: Record<string, number[]> = {};
+  transactions.forEach((tx) => {
+    const year = tx.transactionMonth.slice(0, 4);
+    if (!grouped[year]) {
+      grouped[year] = [];
+    }
+    grouped[year].push(tx.resalePrice);
+  });
+
+  const sortedYears = Object.keys(grouped).sort();
+  return sortedYears.map((year) => {
+    const prices = grouped[year];
+    const median = calculateMedian(prices);
+    const sum = prices.reduce((a, b) => a + b, 0);
+    const avg = Math.round(sum / prices.length);
+    return {
+      key: year,
+      label: `Year ${year}`,
+      shortLabel: year,
+      periodType: 'year',
+      medianPrice: median,
+      avgPrice: avg,
+      count: prices.length,
+    };
+  });
+}
+
+/**
+ * Generates trend points for the past year (the latest 12 recorded market months).
+ */
+export function getPastYearTrends(transactions: HDBTransaction[]): TrendPoint[] {
+  if (transactions.length === 0) return [];
+
+  const grouped: Record<string, number[]> = {};
+  transactions.forEach((tx) => {
+    if (!grouped[tx.transactionMonth]) {
+      grouped[tx.transactionMonth] = [];
+    }
+    grouped[tx.transactionMonth].push(tx.resalePrice);
+  });
+
+  const sortedMonths = Object.keys(grouped).sort();
+  // Take the 12 most recent recorded months
+  const recentMonths = sortedMonths.slice(-12);
+
+  return recentMonths.map((m) => {
+    const prices = grouped[m];
+    const median = calculateMedian(prices);
+    const sum = prices.reduce((a, b) => a + b, 0);
+    const avg = Math.round(sum / prices.length);
+    const formatted = formatMonth(m);
+    return {
+      key: m,
+      label: formatted,
+      shortLabel: `${formatted.split(' ')[0]} '${m.slice(2, 4)}`,
+      periodType: 'month',
+      medianPrice: median,
+      avgPrice: avg,
+      count: prices.length,
+    };
+  });
+}
+
+/**
+ * Generates trend points for the past six recorded months.
+ */
+export function getPastSixMonthsTrends(transactions: HDBTransaction[]): TrendPoint[] {
+  if (transactions.length === 0) return [];
+
+  const grouped: Record<string, number[]> = {};
+  transactions.forEach((tx) => {
+    if (!grouped[tx.transactionMonth]) {
+      grouped[tx.transactionMonth] = [];
+    }
+    grouped[tx.transactionMonth].push(tx.resalePrice);
+  });
+
+  const sortedMonths = Object.keys(grouped).sort();
+  // Take the 6 most recent recorded months
+  const recentMonths = sortedMonths.slice(-6);
+
+  return recentMonths.map((m) => {
+    const prices = grouped[m];
+    const median = calculateMedian(prices);
+    const sum = prices.reduce((a, b) => a + b, 0);
+    const avg = Math.round(sum / prices.length);
+    const formatted = formatMonth(m);
+    return {
+      key: m,
+      label: formatted,
+      shortLabel: `${formatted.split(' ')[0]} '${m.slice(2, 4)}`,
+      periodType: 'month',
+      medianPrice: median,
+      avgPrice: avg,
+      count: prices.length,
+    };
+  });
+}
+
+/**
+ * Returns available unique transaction years in sorted ascending or descending order.
+ */
+export function getAvailableYears(transactions: HDBTransaction[]): string[] {
+  if (transactions.length === 0) {
+    return ['2026', '2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017'];
+  }
+  const set = new Set<string>();
+  transactions.forEach((tx) => {
+    const y = tx.transactionMonth.slice(0, 4);
+    if (y) set.add(y);
+  });
+  return Array.from(set).sort().reverse();
+}
+
+/**
+ * Generates monthly trend points for a designated single year (e.g. 2017, 2018, 2024).
+ */
+export function getDesignatedYearTrends(
+  transactions: HDBTransaction[],
+  year: string
+): TrendPoint[] {
+  if (transactions.length === 0 || !year) return [];
+
+  const filtered = transactions.filter((tx) => tx.transactionMonth.startsWith(year));
+  if (filtered.length === 0) return [];
+
+  const grouped: Record<string, number[]> = {};
+  filtered.forEach((tx) => {
+    if (!grouped[tx.transactionMonth]) {
+      grouped[tx.transactionMonth] = [];
+    }
+    grouped[tx.transactionMonth].push(tx.resalePrice);
+  });
+
+  const sortedMonths = Object.keys(grouped).sort();
+  return sortedMonths.map((m) => {
+    const prices = grouped[m];
+    const median = calculateMedian(prices);
+    const sum = prices.reduce((a, b) => a + b, 0);
+    const avg = Math.round(sum / prices.length);
+    const formatted = formatMonth(m);
+    return {
+      key: m,
+      label: formatted,
+      shortLabel: formatted.split(' ')[0], // e.g. "Jan", "Feb", "Mar"
+      periodType: 'month',
+      medianPrice: median,
+      avgPrice: avg,
+      count: prices.length,
+    };
+  });
+}
+
 /**
  * Generates sorted monthly trend points from filtered transactions.
  */

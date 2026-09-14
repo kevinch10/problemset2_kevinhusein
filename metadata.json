@@ -1,6 +1,6 @@
 {
   "name": "HDB Resale Price Explorer",
-  "description": "Compare HDB resale prices by town and flat type in Singapore with price trends, side-by-side town comparisons, and transaction details.",
+  "description": "Compare HDB resale flat prices by town and flat type in Singapore from 2017 until present time with price trends, two-town comparisons, and transaction details.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
